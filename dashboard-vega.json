@@ -1,0 +1,148 @@
+{
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "title": "Error Counts per Service Over Time",
+    "data": {
+        "url": {
+            "%context%": true,
+            "%timefield%": "window_start",
+            "index": "error-counts",
+            "body": {
+                "aggs": {
+                    "time_buckets": {
+                        "date_histogram": {
+                            "field": "window_start",
+                            "interval": {
+                                "%autointerval%": true
+                            },
+                            "extended_bounds": {
+                                "min": {
+                                    "%timefilter%": "min"
+                                },
+                                "max": {
+                                    "%timefilter%": "max"
+                                }
+                            },
+                            "min_doc_count": 0
+                        },
+                        "aggs": {
+                            "by_service": {
+                                "terms": {
+                                    "field": "service",
+                                    "include": [
+                                        "payment-service",
+                                        "api-gateway",
+                                        "auth-service"
+                                    ]
+                                },
+                                "aggs": {
+                                    "total_errors": {
+                                        "sum": {
+                                            "field": "error_count"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "size": 0
+            }
+        },
+        "format": {
+            "property": "aggregations.time_buckets.buckets"
+        }
+    },
+    "transform": [
+        {
+            "flatten": [
+                "by_service.buckets"
+            ],
+            "as": [
+                "service_bucket"
+            ]
+        },
+        {
+            "calculate": "datum.service_bucket.key",
+            "as": "service"
+        },
+        {
+            "calculate": "datum.service_bucket.total_errors.value",
+            "as": "errors"
+        },
+        {
+            "calculate": "datum.errors > 30 ? 'critical' : datum.errors > 10 ? 'warning' : 'normal'",
+            "as": "status"
+        }
+    ],
+    "facet": {
+        "field": "service",
+        "type": "nominal",
+        "header": {
+            "title": "Service"
+        }
+    },
+    "spec": {
+        "width": 500,
+        "height": 150,
+        "mark": {
+            "type": "bar"
+        },
+        "encoding": {
+            "x": {
+                "field": "key",
+                "type": "temporal",
+                "axis": {
+                    "title": "Time"
+                }
+            },
+            "y": {
+                "field": "errors",
+                "type": "quantitative",
+                "axis": {
+                    "title": "Error Count"
+                }
+            },
+            "color": {
+                "field": "status",
+                "type": "nominal",
+                "scale": {
+                    "domain": [
+                        "normal",
+                        "warning",
+                        "critical"
+                    ],
+                    "range": [
+                        "#54B399",
+                        "#D6BF57",
+                        "#E7664C"
+                    ]
+                },
+                "legend": {
+                    "title": "Status"
+                }
+            },
+            "tooltip": [
+                {
+                    "field": "key",
+                    "type": "temporal",
+                    "title": "Time"
+                },
+                {
+                    "field": "service",
+                    "type": "nominal",
+                    "title": "Service"
+                },
+                {
+                    "field": "errors",
+                    "type": "quantitative",
+                    "title": "Errors"
+                },
+                {
+                    "field": "status",
+                    "type": "nominal",
+                    "title": "Status"
+                }
+            ]
+        }
+    }
+}

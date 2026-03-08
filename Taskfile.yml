@@ -20,7 +20,7 @@ tasks:
   down:
     desc: Stop all services
     cmds:
-      - docker compose down
+      - docker compose stop
 
   restart:
     desc: Restart all services

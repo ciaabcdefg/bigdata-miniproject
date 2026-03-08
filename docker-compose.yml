@@ -227,6 +227,18 @@ services:
     networks:
       - bigdata-net
 
+  kibana-setup:
+    image: curlimages/curl:7.85.0
+    container_name: kibana-setup
+    depends_on:
+      - kibana
+    volumes:
+      - ./kibana/setup.sh:/setup.sh
+      - ./kibana/dashboard.ndjson:/tmp/kibana-dashboard.ndjson
+    entrypoint: [ "/bin/sh", "/setup.sh" ]
+    networks:
+      - bigdata-net
+
   # ==================== Custom Services ====================
   test-frontend:
     build:

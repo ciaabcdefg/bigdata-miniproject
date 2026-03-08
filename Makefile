@@ -9,7 +9,7 @@ up: build  ## Start all services
 	docker compose up -d
 
 down:  ## Stop all services
-	docker compose down
+	docker compose stop
 
 restart: down up  ## Restart all services
 
