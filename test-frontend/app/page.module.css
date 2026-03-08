@@ -1,0 +1,299 @@
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin-top: 0.4rem;
+}
+
+/* ── Stats Bar ───────────────────────────────────────────────────── */
+.statsBar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+
+.statCard {
+  flex: 1;
+  min-width: 120px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  transition: border-color 0.2s;
+}
+
+.statCard:hover {
+  border-color: var(--accent);
+}
+
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statDanger .statValue {
+  color: var(--red);
+}
+
+/* ── Burst Section ───────────────────────────────────────────────── */
+.burstSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.burstInput {
+  width: 80px;
+  padding: 0.4rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.burstInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ── Service Cards ───────────────────────────────────────────────── */
+.services {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.serviceCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.serviceCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.serviceName {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.actionRow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actionBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: #222235;
+  border-color: #3a3a50;
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.burstBtn {
+  padding: 0.55rem 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--yellow);
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.burstBtn:hover:not(:disabled) {
+  background: #2a2a10;
+}
+
+.burstBtn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* ── Level Badge ─────────────────────────────────────────────────── */
+.levelBadge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #000;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+/* ── Log Feed ────────────────────────────────────────────────────── */
+.logSection {
+  margin-top: 1rem;
+}
+
+.logSection h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.logFeed {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.75rem;
+}
+
+.emptyFeed {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-dim);
+}
+
+.logEntry {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.logEntry:hover {
+  background: var(--surface-2);
+}
+
+.logEntry:first-child {
+  animation: fadeIn 0.3s ease;
+}
+
+.logTime {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  width: 60px;
+}
+
+.logService {
+  color: var(--accent);
+  flex-shrink: 0;
+  width: 120px;
+}
+
+.logMsg {
+  flex: 1;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logRt {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  width: 60px;
+  text-align: right;
+}
+
+.logStatus {
+  flex-shrink: 0;
+  width: 30px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+.logFeed::-webkit-scrollbar {
+  width: 6px;
+}
+
+.logFeed::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+.logFeed::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}

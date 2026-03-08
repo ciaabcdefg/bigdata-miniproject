@@ -1,0 +1,90 @@
+# https://taskfile.dev
+version: "3"
+
+vars:
+  KAFKA_TOPIC: service-logs
+
+tasks:
+  # ==================== Core ====================
+  build:
+    desc: Build custom images
+    cmds:
+      - docker compose build
+
+  up:
+    desc: Build & start all services
+    deps: [build]
+    cmds:
+      - docker compose up -d
+
+  down:
+    desc: Stop all services
+    cmds:
+      - docker compose down
+
+  restart:
+    desc: Restart all services
+    cmds:
+      - task: down
+      - task: up
+
+  clean:
+    desc: Stop and remove all data volumes
+    cmds:
+      - docker compose down -v
+
+  logs:
+    desc: Follow logs for all services
+    cmds:
+      - docker compose logs -f
+
+  status:
+    desc: Show service statuses
+    cmds:
+      - docker compose ps
+
+  # ==================== Debugging ====================
+  kafka:topics:
+    desc: List Kafka topics
+    cmds:
+      - docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
+
+  kafka:consume:
+    desc: Consume 5 messages from service-logs topic
+    cmds:
+      - docker compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic {{.KAFKA_TOPIC}} --max-messages 5
+
+  es:check:
+    desc: Check Elasticsearch cluster health & indices
+    cmds:
+      - echo "=== Cluster Health ==="
+      - curl -s http://localhost:9200/_cluster/health?pretty
+      - echo ""
+      - echo "=== Indices ==="
+      - curl -s http://localhost:9200/_cat/indices?v
+
+  es:errors:
+    desc: Query latest error counts from Elasticsearch
+    cmds:
+      - curl -s "http://localhost:9200/error-counts/_search?pretty&size=5"
+
+  es:requests:
+    desc: Query latest request counts from Elasticsearch
+    cmds:
+      - curl -s "http://localhost:9200/request-counts/_search?pretty&size=5"
+
+  hive:shell:
+    desc: Open Hive Beeline shell
+    interactive: true
+    cmds:
+      - docker compose exec hive-server beeline -u jdbc:hive2://localhost:10000
+
+  logs:service:
+    desc: "Follow logs for a specific service (usage: task logs:service -- kafka)"
+    cmds:
+      - docker compose logs -f {{.CLI_ARGS}}
+
+  restart:service:
+    desc: "Restart a specific service (usage: task restart:service -- spark-streaming)"
+    cmds:
+      - docker compose restart {{.CLI_ARGS}}

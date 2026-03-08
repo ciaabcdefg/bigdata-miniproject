@@ -1,0 +1,299 @@
+services:
+  # ==================== Message Broker ====================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:${CONFLUENT_VERSION}
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - bigdata-net
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "2181" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:${CONFLUENT_VERSION}
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - bigdata-net
+    healthcheck:
+      test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ==================== Data Lake (Hadoop + Hive) ====================
+  namenode:
+    image: bde2020/hadoop-namenode:${HADOOP_VERSION}
+    container_name: namenode
+    ports:
+      - "9870:9870"
+    environment:
+      CLUSTER_NAME: bigdata-cluster
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      CORE_CONF_hadoop_http_staticuser_user: root
+      HDFS_CONF_dfs_replication: 1
+      HDFS_CONF_dfs_namenode_datanode_registration_ip___hostname___check: "false"
+    volumes:
+      - namenode-data:/hadoop/dfs/name
+    networks:
+      - bigdata-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9870" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  datanode:
+    image: bde2020/hadoop-datanode:${HADOOP_VERSION}
+    container_name: datanode
+    depends_on:
+      namenode:
+        condition: service_healthy
+    ports:
+      - "9864:9864"
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: 1
+    volumes:
+      - datanode-data:/hadoop/dfs/data
+    networks:
+      - bigdata-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9864" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  hive-metastore-db:
+    image: postgres:13
+    container_name: hive-metastore-db
+    environment:
+      POSTGRES_DB: metastore
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hive
+    volumes:
+      - hive-metastore-db-data:/var/lib/postgresql/data
+    networks:
+      - bigdata-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U hive -d metastore" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hive-metastore:
+    image: apache/hive:3.1.3
+    container_name: hive-metastore
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+      hive-metastore-db:
+        condition: service_healthy
+    ports:
+      - "9083:9083"
+    environment:
+      SERVICE_NAME: metastore
+      DB_DRIVER: postgres
+      SERVICE_OPTS: >-
+        -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://hive-metastore-db:5432/metastore -Djavax.jdo.option.ConnectionUserName=hive -Djavax.jdo.option.ConnectionPassword=hive
+    volumes:
+      - hive-warehouse:/opt/hive/data/warehouse
+      - ./hive/entrypoint.sh:/entrypoint.sh
+    entrypoint: [ "/bin/bash", "/entrypoint.sh" ]
+    networks:
+      - bigdata-net
+
+  hive-server:
+    image: apache/hive:3.1.3
+    container_name: hive-server
+    depends_on:
+      - hive-metastore
+    ports:
+      - "10000:10000"
+      - "10002:10002"
+    environment:
+      SERVICE_NAME: hiveserver2
+      HIVE_SERVER2_THRIFT_PORT: 10000
+      SERVICE_OPTS: >-
+        -Dhive.metastore.uris=thrift://hive-metastore:9083
+      IS_RESUME: "true"
+    volumes:
+      - hive-warehouse:/opt/hive/data/warehouse
+    networks:
+      - bigdata-net
+
+  # ==================== Stream Processing (Spark) ====================
+  spark-master:
+    image: apache/spark-py:v3.4.0
+    container_name: spark-master
+    user: root
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    command: /opt/spark/sbin/start-master.sh
+    environment:
+      SPARK_MASTER_HOST: spark-master
+      SPARK_MASTER_PORT: 7077
+      SPARK_MASTER_WEBUI_PORT: 8080
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_LOG_DIR: /opt/spark/logs
+    volumes:
+      - ./spark/log4j2.properties:/opt/spark/conf/log4j2.properties
+      - spark-logs:/opt/spark/logs
+    networks:
+      - bigdata-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  spark-worker:
+    image: apache/spark-py:v3.4.0
+    container_name: spark-worker
+    user: root
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    command: /opt/spark/sbin/start-worker.sh spark://spark-master:7077
+    environment:
+      SPARK_WORKER_MEMORY: 2g
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_WEBUI_PORT: 8081
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_LOG_DIR: /opt/spark/logs
+    volumes:
+      - ./spark/log4j2.properties:/opt/spark/conf/log4j2.properties
+      - spark-logs:/opt/spark/logs
+    networks:
+      - bigdata-net
+
+  # ==================== Search & Visualization ====================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.http.ssl.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    networks:
+      - bigdata-net
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ES_VERSION}
+    container_name: kibana
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      SERVER_NAME: kibana
+    networks:
+      - bigdata-net
+
+  # ==================== Custom Services ====================
+  test-frontend:
+    build:
+      context: ./test-frontend
+      dockerfile: Dockerfile
+    container_name: test-frontend
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+    networks:
+      - bigdata-net
+    restart: on-failure
+
+  # log-generator (automated — uncomment to use instead of test-frontend):
+  # log-generator:
+  #   build:
+  #     context: ./log-generator
+  #     dockerfile: Dockerfile
+  #   container_name: log-generator
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #   environment:
+  #     KAFKA_BROKER: kafka:9092
+  #     KAFKA_TOPIC: ${KAFKA_TOPIC}
+  #     LOG_INTERVAL_MIN: ${LOG_INTERVAL_MIN}
+  #     LOG_INTERVAL_MAX: ${LOG_INTERVAL_MAX}
+  #   networks:
+  #     - bigdata-net
+  #   restart: on-failure
+
+  spark-streaming:
+    build:
+      context: ./spark
+      dockerfile: Dockerfile
+    container_name: spark-streaming
+    depends_on:
+      kafka:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+      ES_HOST: ${ES_HOST}
+      ES_PORT: ${ES_PORT}
+      ES_ERROR_INDEX: ${ES_ERROR_INDEX}
+      ES_REQUEST_INDEX: ${ES_REQUEST_INDEX}
+    networks:
+      - bigdata-net
+    restart: on-failure
+
+# ==================== Infrastructure ====================
+volumes:
+  namenode-data:
+  datanode-data:
+  hive-metastore-db-data:
+  hive-warehouse:
+  es-data:
+  spark-logs:
+
+
+networks:
+  bigdata-net:
+    driver: bridge
