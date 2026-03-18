@@ -1,6 +1,10 @@
-# Bigdata Pipeline — Real-Time Log Monitoring
+# Bigdata Project — Real-Time Microservice Log Error Monitoring
 
 A single-node Docker Compose deployment of a real-time microservice log processing pipeline.
+
+## Contributors
+* **Kanathip Pandee** (6510503247)
+* **Ittiwat Chuchoet** (6510503913)
 
 ## Architecture
 
